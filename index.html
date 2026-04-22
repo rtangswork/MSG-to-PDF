@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSG → PDF · Glenview Capital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080c14;
+  --surface:  #0e1622;
+  --border:   #162032;
+  --border2:  #1e2f44;
+  --teal:     #00d4b4;
+  --teal-dim: #00a08a;
+  --teal-glow:rgba(0,212,180,0.12);
+  --text:     #dce8f0;
+  --muted:    #4a6278;
+  --muted2:   #2a3f52;
+  --ok:       #00e096;
+  --err:      #ff5c5c;
+  --warn:     #ffb830;
+  --mono:     'DM Mono', monospace;
+  --display:  'Syne', sans-serif;
+  --body:     'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  overflow: hidden;
+}
+
+/* Ambient background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Teal radial glow top-left */
+body::after {
+  content: '';
+  position: fixed;
+  top: -120px; left: -120px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,212,180,0.07) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr 360px;
+  grid-template-areas:
+    "header  header"
+    "main    sidebar"
+    "footer  footer";
+  gap: 0;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 40px;
+  border-bottom: 1px solid var(--border2);
+  background: rgba(8,12,20,0.8);
+  backdrop-filter: blur(12px);
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.logo-title {
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+.logo-title span { color: var(--teal); }
+.logo-sub {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.badge {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--teal);
+  border: 1px solid var(--teal-dim);
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(0,212,180,0.05);
+}
+
+/* ── Main drop area ─────────────────────────────────────── */
+main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 28px;
+}
+
+.drop-zone {
+  width: 100%;
+  max-width: 580px;
+  aspect-ratio: 4/3;
+  max-height: 400px;
+  border: 2px dashed var(--border2);
+  border-radius: 20px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .25s, background .25s, box-shadow .25s;
+}
+
+.drop-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% -20%, rgba(0,212,180,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.drop-zone:hover,
+.drop-zone.hover {
+  border-color: var(--teal);
+  background: rgba(0,212,180,0.04);
+  box-shadow: 0 0 40px rgba(0,212,180,0.08), inset 0 0 40px rgba(0,212,180,0.03);
+}
+
+.drop-zone:hover .drop-icon,
+.drop-zone.hover .drop-icon {
+  transform: translateY(-6px) scale(1.05);
+  filter: drop-shadow(0 0 24px rgba(0,212,180,0.5));
+}
+
+.drop-icon {
+  font-size: 3.5rem;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), filter .3s;
+  filter: drop-shadow(0 0 10px rgba(0,212,180,0.25));
+}
+
+.drop-label {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.drop-hint {
+  font-size: .82rem;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.browse-btn {
+  margin-top: 4px;
+  padding: 11px 28px;
+  background: var(--teal);
+  color: #040810;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--display);
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: .01em;
+  transition: background .15s, transform .1s, box-shadow .15s;
+  box-shadow: 0 0 20px rgba(0,212,180,0.2);
+  position: relative;
+  z-index: 2;
+}
+.browse-btn:hover { background: #00f0cc; box-shadow: 0 0 30px rgba(0,212,180,0.35); }
+.browse-btn:active { transform: scale(.97); }
+
+input[type=file] { display: none; }
+
+/* Multi-file hint */
+.multi-hint {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  letter-spacing: .04em;
+}
+.multi-hint span { color: var(--teal-dim); }
+
+/* ── Sidebar log ────────────────────────────────────────── */
+.sidebar {
+  grid-area: sidebar;
+  border-left: 1px solid var(--border2);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  font-family: var(--mono);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+}
+
+.clear-btn {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--muted2);
+  background: none;
+  border: 1px solid var(--border2);
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  transition: color .15s, border-color .15s;
+}
+.clear-btn:hover { color: var(--muted); border-color: var(--muted2); }
+
+.log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.log-entry {
+  padding: 6px 22px;
+  display: grid;
+  grid-template-columns: 6px 1fr;
+  gap: 10px;
+  align-items: start;
+  border-bottom: 1px solid transparent;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform: translateX(6px); } to { opacity:1; transform: none; } }
+
+.log-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.log-text {
+  font-family: var(--mono);
+  font-size: .74rem;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.log-time {
+  font-size: .65rem;
+  color: var(--muted);
+  display: block;
+  margin-top: 1px;
+}
+
+.log-entry.in .log-dot { background: #38bdf8; }
+.log-entry.in .log-text { color: #93c5fd; }
+.log-entry.ok .log-dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.log-entry.ok .log-text { color: #6ee7b7; }
+.log-entry.er .log-dot { background: var(--err); }
+.log-entry.er .log-text { color: #fca5a5; font-weight: 500; }
+.log-entry.wn .log-dot { background: var(--warn); }
+.log-entry.wn .log-text { color: #fde68a; }
+
+/* Empty state */
+.log-empty {
+  padding: 32px 22px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: .74rem;
+  color: var(--muted2);
+  line-height: 1.8;
+}
+
+/* ── Stats bar ──────────────────────────────────────────── */
+.stats-bar {
+  padding: 12px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-val {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+.stat-val.green { color: var(--ok); }
+.stat-val.red   { color: var(--err); }
+.stat-lbl {
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+footer {
+  grid-area: footer;
+  padding: 12px 40px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(8,12,20,0.9);
+}
+.footer-note {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--muted);
+  letter-spacing: .03em;
+}
+.footer-note span { color: var(--teal-dim); }
+
+/* ── Progress overlay ───────────────────────────────────── */
+#progress {
+  display: none;
+  position: fixed;
+  bottom: 60px; right: 380px;
+  background: var(--surface);
+  border: 1px solid var(--teal);
+  border-radius: 10px;
+  padding: 14px 20px;
+  font-family: var(--mono);
+  font-size: .78rem;
+  color: var(--teal);
+  box-shadow: 0 0 30px rgba(0,212,180,0.15);
+  animation: fadeIn .2s ease;
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-title">MSG <span>→</span> PDF</div>
+      <div class="logo-sub">Outlook converter</div>
+    </div>
+    <div class="badge">Zero upload · Client-side only</div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <div class="drop-zone" id="drop">
+      <div class="drop-icon">📨</div>
+      <div class="drop-label">Drop .msg files here</div>
+      <div class="drop-hint">Drag directly from Windows Explorer</div>
+      <button class="browse-btn" id="browseBtn">Browse for files</button>
+      <input type="file" id="fileInput" accept=".msg" multiple>
+      <div class="multi-hint">Supports <span>multiple files</span> at once</div>
+    </div>
+  </main>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Activity Log</span>
+      <button class="clear-btn" id="clearBtn">Clear</button>
+    </div>
+    <div class="log-body" id="logBody">
+      <div class="log-empty" id="logEmpty">
+        No activity yet.<br>Convert a file to see logs here.
+      </div>
+    </div>
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-val" id="statTotal">0</div>
+        <div class="stat-lbl">Processed</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val green" id="statOk">0</div>
+        <div class="stat-lbl">Converted</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val red" id="statErr">0</div>
+        <div class="stat-lbl">Errors</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-note">Nothing is uploaded · Everything runs <span>in your browser</span> · PDF saves to Downloads</div>
+    <div class="footer-note">Glenview Capital Internal Tool</div>
+  </footer>
+</div>
+
+<div id="progress"></div>
+
+<script>
+// ── Stats ──────────────────────────────────────────────────────────────────────
+let nTotal = 0, nOk = 0, nErr = 0;
+function updateStats() {
+  document.getElementById('statTotal').textContent = nTotal;
+  document.getElementById('statOk').textContent    = nOk;
+  document.getElementById('statErr').textContent   = nErr;
+}
+
+// ── Log ────────────────────────────────────────────────────────────────────────
+const logBody  = document.getElementById('logBody');
+const logEmpty = document.getElementById('logEmpty');
+
+function log(msg, type) {
+  if (logEmpty) logEmpty.style.display = 'none';
+  const now = new Date().toTimeString().slice(0,8);
+  const el  = document.createElement('div');
+  el.className = `log-entry ${type||'in'}`;
+  el.innerHTML = `<span class="log-dot"></span><span class="log-text">${msg}<span class="log-time">${now}</span></span>`;
+  logBody.appendChild(el);
+  logBody.scrollTop = logBody.scrollHeight;
+}
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  logBody.innerHTML = '';
+  const empty = document.createElement('div');
+  empty.className = 'log-empty';
+  empty.id = 'logEmpty';
+  empty.innerHTML = 'No activity yet.<br>Convert a file to see logs here.';
+  logBody.appendChild(empty);
+});
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+const prog = document.getElementById('progress');
+function showProgress(msg) { prog.textContent = msg; prog.style.display = 'block'; }
+function hideProgress()    { prog.style.display = 'none'; }
+
+// ── Drop zone ──────────────────────────────────────────────────────────────────
+const drop      = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const browseBtn = document.getElementById('browseBtn');
+
+browseBtn.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+fileInput.addEventListener('change', () => { go([...fileInput.files]); fileInput.value = ''; });
+
+drop.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); drop.classList.add('hover'); });
+drop.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); drop.classList.add('hover'); });
+drop.addEventListener('dragleave', e => { e.stopPropagation(); drop.classList.remove('hover'); });
+drop.addEventListener('drop', e => {
+  e.preventDefault(); e.stopPropagation();
+  drop.classList.remove('hover');
+  go([...e.dataTransfer.files]);
+});
+
+function go(files) {
+  const msgs = files.filter(f => f.name.toLowerCase().endsWith('.msg'));
+  if (!msgs.length) { log('No .msg files found in selection', 'wn'); return; }
+  log(`${msgs.length} file(s) queued for conversion`, 'in');
+  msgs.forEach(convert);
+}
+
+async function convert(file) {
+  nTotal++; updateStats();
+  log(`Starting: ${file.name} (${(file.size/1024).toFixed(0)} KB)`, 'in');
+  showProgress(`Converting ${file.name}…`);
+  try {
+    const ab    = await file.arrayBuffer();
+    const email = parseMSG(ab);
+    log(`Parsed: "${email.subject}"`, 'in');
+    const pdf  = makePDF(email, file.name);
+    const name = file.name.replace(/\.msg$/i, '.pdf');
+    dlBlob(pdf, name);
+    nOk++; updateStats();
+    log(`✓ Saved: ${name}`, 'ok');
+  } catch(err) {
+    nErr++; updateStats();
+    log(`✗ ${file.name}: ${err.message}`, 'er');
+    console.error(err);
+  } finally {
+    hideProgress();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MSG / CFB PARSER — pure JS, zero dependencies
+// ═══════════════════════════════════════════════════════════════════════════════
+function parseMSG(ab) {
+  const b  = new Uint8Array(ab);
+  const dv = new DataView(ab);
+
+  if (dv.getUint32(0, true) !== 0xE011CFD0)
+    throw new Error('Not a valid .msg file (bad magic bytes)');
+
+  const secSize      = 1 << dv.getUint16(30, true);
+  const miniSecSize  = 1 << dv.getUint16(32, true);
+  const firstDir     = dv.getUint32(48, true);
+  const miniCutoff   = dv.getUint32(56, true);
+  const firstMiniFAT = dv.getUint32(60, true);
+
+  function secOff(s) { return (s + 1) * secSize; }
+
+  const fatSectors = [];
+  for (let i = 0; i < 109; i++) {
+    const v = dv.getUint32(76 + i * 4, true);
+    if (v >= 0xFFFFFFFB) break;
+    fatSectors.push(v);
+  }
+  let ds = dv.getUint32(68, true);
+  while (ds < 0xFFFFFFFB) {
+    const o = secOff(ds);
+    for (let i = 0; i < secSize / 4 - 1; i++) {
+      const v = dv.getUint32(o + i * 4, true);
+      if (v < 0xFFFFFFFB) fatSectors.push(v);
+    }
+    ds = dv.getUint32(o + secSize - 4, true);
+  }
+
+  const fat = [];
+  for (const fs of fatSectors) {
+    const o = secOff(fs);
+    for (let i = 0; i < secSize / 4; i++) fat.push(dv.getInt32(o + i * 4, true));
+  }
+
+  function chain(start) {
+    const r = []; let s = start;
+    while (s >= 0 && s < 0x7FFFFFF0) { r.push(s); s = fat[s]; if (r.length > 50000) break; }
+    return r;
+  }
+  function readFull(start, size) {
+    const c = chain(start);
+    const out = new Uint8Array(c.length * secSize);
+    c.forEach((s, i) => out.set(b.subarray(secOff(s), secOff(s) + secSize), i * secSize));
+    return out.subarray(0, Math.min(size, out.length));
+  }
+
+  const dirEntries = [];
+  chain(firstDir).forEach(sec => {
+    const o = secOff(sec);
+    for (let i = 0; i < secSize / 128; i++) {
+      const e = o + i * 128;
+      const nl = dv.getUint16(e + 64, true), type = b[e + 66];
+      if (!nl || !type) { dirEntries.push(null); continue; }
+      let nm = '';
+      for (let j = 0; j < (nl - 2) / 2; j++) nm += String.fromCharCode(dv.getUint16(e + j * 2, true));
+      dirEntries.push({
+        nm, type,
+        child: dv.getUint32(e + 76, true), left: dv.getUint32(e + 68, true),
+        right: dv.getUint32(e + 72, true), start: dv.getUint32(e + 116, true),
+        size:  dv.getUint32(e + 120, true),
+      });
+    }
+  });
+
+  const root = dirEntries[0];
+  let miniData = null;
+  const miniFAT = [];
+  if (root && root.start < 0xFFFFFFFB) miniData = readFull(root.start, root.size);
+  if (firstMiniFAT < 0xFFFFFFFB) {
+    chain(firstMiniFAT).forEach(sec => {
+      const o = secOff(sec);
+      for (let i = 0; i < secSize / 4; i++) miniFAT.push(dv.getInt32(o + i * 4, true));
+    });
+  }
+
+  function miniChain(start) {
+    const r = []; let s = start;
+    while (s >= 0 && s < 0x7FFFFFF0) { r.push(s); s = miniFAT[s]; if (r.length > 50000) break; }
+    return r;
+  }
+  function readMini(start, size) {
+    if (!miniData) return new Uint8Array(0);
+    const c = miniChain(start);
+    const out = new Uint8Array(c.length * miniSecSize);
+    c.forEach((s, i) => out.set(miniData.subarray(s * miniSecSize, (s + 1) * miniSecSize), i * miniSecSize));
+    return out.subarray(0, Math.min(size, out.length));
+  }
+  function readEntry(e) {
+    return (e.size < miniCutoff && miniData) ? readMini(e.start, e.size) : readFull(e.start, e.size);
+  }
+
+  function desc(id, acc) {
+    if (id === undefined || id >= 0xFFFFFFFB || id >= dirEntries.length) return;
+    const e = dirEntries[id]; if (!e) return;
+    acc.push(e); desc(e.left, acc); desc(e.right, acc);
+  }
+  function children(e) {
+    const r = [];
+    if (e && e.child < 0xFFFFFFFB && e.child < dirEntries.length) desc(e.child, r);
+    return r;
+  }
+  function findChild(p, name) { return children(p).find(c => c && c.nm.toLowerCase() === name) || null; }
+  function getStream(p, tag, type) { return findChild(p, `__substg1.0_${tag}${type}`.toLowerCase()); }
+  function readStr(p, tag) {
+    let e = getStream(p, tag, '001F');
+    if (e) return new TextDecoder('utf-16le').decode(readEntry(e)).replace(/\0+$/, '');
+    e = getStream(p, tag, '001E');
+    if (e) return new TextDecoder('latin1').decode(readEntry(e)).replace(/\0+$/, '');
+    return '';
+  }
+  function readFiletime(p, tag) {
+    const e = getStream(p, tag, '0040'); if (!e) return null;
+    const d = readEntry(e); if (d.length < 8) return null;
+    const dv2 = new DataView(d.buffer, d.byteOffset);
+    const lo = dv2.getUint32(0, true), hi = dv2.getUint32(4, true);
+    const ms = (hi * 4294967296 + lo) / 10000 - 11644473600000;
+    return isNaN(ms) ? null : new Date(ms);
+  }
+
+  let body = readStr(root, '1000');
+  if (!body.trim()) {
+    const e = getStream(root, '1013', '0102') || getStream(root, '1013', '001F');
+    if (e) {
+      const d = readEntry(e);
+      let html = '';
+      try { html = new TextDecoder('utf-8').decode(d); } catch { html = new TextDecoder('latin1').decode(d); }
+      body = html
+        .replace(/<br\s*\/?>/gi, '\n').replace(/<\/?(p|div|tr|li)[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+        .replace(/\r\n|\r/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+  }
+
+  return {
+    subject:     readStr(root, '0037') || '(No Subject)',
+    sender:      [readStr(root, '0C1A'), readStr(root, '0C1F') ? `<${readStr(root,'0C1F')}>` : ''].filter(Boolean).join(' '),
+    to:          readStr(root, '0E04'),
+    cc:          readStr(root, '0E03'),
+    body:        body.trim() || '(No message body)',
+    sentDate:    readFiletime(root, '0039') || readFiletime(root, '0E06'),
+    attachments: children(root)
+      .filter(e => e && e.nm.toLowerCase().startsWith('__attach_version1.0_'))
+      .map(e => readStr(e, '3707') || readStr(e, '3704') || 'attachment'),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PDF BUILDER — pure JS, zero dependencies
+// ═══════════════════════════════════════════════════════════════════════════════
+function makePDF(email, filename) {
+  const PW=612, PH=792, ML=52, MT=52, MB=55, CW=PW-104;
+  const pages=[]; let ops=[];
+  function flush() { pages.push(ops.join('\n')); ops=[]; }
+
+  function pe(s) {
+    let r='';
+    for (let i=0;i<s.length;i++) {
+      const c=s.charCodeAt(i);
+      if (c===40) r+='\\('; else if (c===41) r+='\\)';
+      else if (c===92) r+='\\\\'; else if (c>255) r+='?';
+      else r+=s[i];
+    }
+    return r;
+  }
+  function rgb(r,g,b) { return `${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`; }
+  function fillRect(x,y,w,h,r,g,b) { ops.push(`${rgb(r,g,b)} rg ${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)} re f`); }
+  function drawLine(x1,y1,x2,y2,r,g,b,lw) { ops.push(`${rgb(r,g,b)} RG ${lw} w ${x1.toFixed(1)} ${y1.toFixed(1)} m ${x2.toFixed(1)} ${y2.toFixed(1)} l S`); }
+  function drawText(s,x,y,sz,bold,r,g,b) {
+    if (!s) return;
+    ops.push(`${rgb(r,g,b)} rg BT /${bold?'FB':'FR'} ${sz} Tf ${x.toFixed(1)} ${y.toFixed(1)} Td (${pe(s)}) Tj ET`);
+  }
+  function wrap(str,maxW,sz) {
+    const cw=sz*0.52;
+    if (str.length*cw<=maxW) return [str];
+    const words=str.split(' '); const lines=[]; let cur='';
+    for (const w of words) {
+      const test=cur?cur+' '+w:w;
+      if (test.length*cw>maxW&&cur) { lines.push(cur); cur=w; } else cur=test;
+    }
+    if (cur) lines.push(cur);
+    return lines.length?lines:[''];
+  }
+
+  let y=PH-MT;
+  fillRect(ML, y-52, CW, 52, 17,34,64);
+  const subj=email.subject.length>78?email.subject.slice(0,77)+'…':email.subject;
+  drawText(subj, ML+14, y-34, 14, true, 255,255,255);
+  y-=68;
+
+  const meta=[
+    email.sender   ?['FROM',email.sender]:null,
+    email.to       ?['TO',  email.to]:null,
+    email.cc       ?['CC',  email.cc]:null,
+    email.sentDate ?['DATE',email.sentDate.toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})]:null,
+  ].filter(Boolean);
+
+  for (let i=0;i<meta.length;i++) {
+    const [label,value]=meta[i];
+    fillRect(ML,y-22,CW,22,...(i%2===0?[240,245,250]:[232,238,245]));
+    drawText(label,ML+8,y-14,7.5,true,13,124,110);
+    const maxC=Math.floor((CW-52)/(9.5*0.52));
+    drawText(value.length>maxC?value.slice(0,maxC-1)+'…':value,ML+48,y-14,9.5,false,20,30,50);
+    y-=22;
+  }
+  y-=14;
+  drawLine(ML,y,ML+CW,y,13,124,110,1.5);
+  y-=16;
+
+  for (const para of email.body.split('\n')) {
+    const t=para.trim();
+    if (!t) { y-=5; continue; }
+    for (const ln of wrap(t,CW,10)) {
+      if (y-15<MB) { flush(); y=PH-MT; }
+      drawText(ln,ML,y,10,false,30,40,60); y-=15;
+    }
+  }
+
+  if (email.attachments.length) {
+    y-=12;
+    if (y-40<MB) { flush(); y=PH-MT; }
+    drawLine(ML,y,ML+CW,y,180,195,210,0.5); y-=12;
+    drawText(`ATTACHMENTS (${email.attachments.length})`,ML,y,8,true,13,124,110); y-=12;
+    for (const att of email.attachments) {
+      if (y-14<MB) { flush(); y=PH-MT; }
+      drawText(`- ${att}`,ML+6,y,9,false,80,100,120); y-=14;
+    }
+  }
+  flush();
+
+  // Assemble PDF
+  const enc=new TextEncoder(); const parts=[]; let pos=0; const offs={};
+  function emit(s) { const byt=enc.encode(s+'\n'); parts.push(byt); pos+=byt.length; }
+  function emitRaw(byt) { parts.push(byt); pos+=byt.length; }
+  function obj(id) { offs[id]=pos; emit(`${id} 0 obj`); }
+
+  emit('%PDF-1.4');
+  obj(1); emit('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'); emit('endobj');
+  obj(2); emit('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'); emit('endobj');
+  obj(3); emit('<< /Font << /FR 1 0 R /FB 2 0 R >> >>'); emit('endobj');
+
+  const total=pages.length; const dateStr=new Date().toLocaleString();
+  const sIds=[]; let nid=4;
+
+  for (let i=0;i<total;i++) {
+    const ft=`Converted from ${filename}  \xB7  ${dateStr}  \xB7  Page ${i+1} of ${total}`;
+    const fx=((PW/2)-ft.length*1.85).toFixed(1);
+    const footer=`${rgb(160,175,190)} rg BT /FR 7 Tf ${fx} 25.0 Td (${pe(ft)}) Tj ET`;
+    const content=enc.encode(pages[i]+'\n'+footer);
+    obj(nid); sIds.push(nid);
+    emit(`<< /Length ${content.length} >>`); emit('stream');
+    emitRaw(content); emit('\nendstream'); emit('endobj'); nid++;
+  }
+
+  const pagesId=nid+total; const pIds=[];
+  for (let i=0;i<total;i++) {
+    obj(nid); pIds.push(nid);
+    emit(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 612 792] /Resources 3 0 R /Contents ${sIds[i]} 0 R >>`);
+    emit('endobj'); nid++;
+  }
+  obj(pagesId);
+  emit(`<< /Type /Pages /Kids [${pIds.map(id=>`${id} 0 R`).join(' ')}] /Count ${total} >>`);
+  emit('endobj');
+
+  const catId=pagesId+1; obj(catId);
+  emit(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`); emit('endobj');
+
+  const xrefPos=pos; const objCount=catId+1;
+  emit('xref'); emit(`0 ${objCount}`); emit('0000000000 65535 f ');
+  for (let i=1;i<objCount;i++) emit(String(offs[i]||0).padStart(10,'0')+' 00000 n ');
+  emit('trailer'); emit(`<< /Size ${objCount} /Root ${catId} 0 R >>`);
+  emit('startxref'); emit(String(xrefPos)); emit('%%EOF');
+
+  const totalLen=parts.reduce((a,p)=>a+p.length,0);
+  const out=new Uint8Array(totalLen); let off=0;
+  for (const p of parts) { out.set(p,off); off+=p.length; }
+  return out.buffer;
+}
+
+// ── Download ──────────────────────────────────────────────────────────────────
+function dlBlob(buf, name) {
+  const blob=new Blob([buf],{type:'application/pdf'});
+  const url=URL.createObjectURL(blob);
+  const a=Object.assign(document.createElement('a'),{href:url,download:name});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+</script>
+</body>
+</html>
