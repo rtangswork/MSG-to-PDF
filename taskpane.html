@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSG → PDF</title>
+<script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080c14;
+  --surface: #0e1622;
+  --border:  #1e2f44;
+  --teal:    #00d4b4;
+  --teal2:   #00a08a;
+  --text:    #dce8f0;
+  --muted:   #4a6278;
+  --ok:      #00e096;
+  --err:     #ff5c5c;
+  --mono:    'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --body:    'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 16px;
+  overflow: hidden;
+}
+
+/* Ambient grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(30,47,68,.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,47,68,.5) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.content { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+
+header { text-align: center; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.logo { font-family: var(--display); font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; }
+.logo span { color: var(--teal); }
+.sub { font-size: .75rem; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+
+/* Email preview card */
+#preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.field { display: grid; grid-template-columns: 40px 1fr; gap: 6px; align-items: start; }
+.field-label {
+  font-family: var(--mono);
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--teal2);
+  padding-top: 1px;
+  font-weight: 500;
+}
+.field-value {
+  font-size: .8rem;
+  color: var(--text);
+  line-height: 1.4;
+  word-break: break-word;
+}
+#subjectLine {
+  font-family: var(--display);
+  font-size: .95rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+/* Convert button */
+#convertBtn {
+  background: var(--teal);
+  color: #040810;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: .01em;
+  transition: background .15s, transform .1s, box-shadow .15s;
+  box-shadow: 0 0 24px rgba(0,212,180,0.2);
+  width: 100%;
+  flex-shrink: 0;
+  display: none;
+}
+#convertBtn:hover  { background: #00f0cc; box-shadow: 0 0 32px rgba(0,212,180,0.3); }
+#convertBtn:active { transform: scale(.98); }
+#convertBtn:disabled { background: #1e3a38; color: #2a5a54; cursor: not-allowed; box-shadow: none; }
+
+/* Status / log */
+#log {
+  flex: 1;
+  background: #040810;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: .72rem;
+  line-height: 1.7;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  min-height: 80px;
+}
+.entry { display: flex; gap: 8px; align-items: flex-start; animation: fadeIn .15s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateX(4px); } to { opacity:1; transform:none; } }
+.dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+.in .dot { background:#38bdf8; } .in span { color:#93c5fd; }
+.ok .dot { background:var(--ok); box-shadow:0 0 5px var(--ok); } .ok span { color:#6ee7b7; }
+.er .dot { background:var(--err); } .er span { color:#fca5a5; font-weight:500; }
+.wn .dot { background:#fbbf24; } .wn span { color:#fde68a; }
+
+/* Loading spinner */
+#loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: .75rem;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+footer {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+<div class="content">
+  <header>
+    <div class="logo">MSG <span>→</span> PDF</div>
+    <div class="sub">Glenview Capital · Email Converter</div>
+  </header>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Loading email…</span>
+  </div>
+
+  <div id="preview">
+    <div id="subjectLine"></div>
+    <div class="field"><span class="field-label">From</span><span class="field-value" id="fromVal"></span></div>
+    <div class="field"><span class="field-label">To</span><span class="field-value" id="toVal"></span></div>
+    <div class="field" id="ccRow" style="display:none"><span class="field-label">CC</span><span class="field-value" id="ccVal"></span></div>
+    <div class="field"><span class="field-label">Date</span><span class="field-value" id="dateVal"></span></div>
+  </div>
+
+  <button id="convertBtn">⬇ Save as PDF</button>
+
+  <div id="log"></div>
+</div>
+
+<footer>Nothing is uploaded · Runs entirely in Outlook</footer>
+
+<script>
+// ── Logging ────────────────────────────────────────────────────────────────────
+const logEl = document.getElementById('log');
+function log(msg, type) {
+  const el = document.createElement('div');
+  el.className = `entry ${type||'in'}`;
+  el.innerHTML = `<span class="dot"></span><span>${msg}</span>`;
+  logEl.appendChild(el);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── Office.js init ─────────────────────────────────────────────────────────────
+let emailData = null;
+
+Office.onReady((info) => {
+  document.getElementById('loading').style.display = 'none';
+
+  if (info.host !== Office.HostType.Outlook) {
+    log('Open this add-in from Outlook to convert emails.', 'wn');
+    return;
+  }
+
+  const item = Office.context.mailbox.item;
+
+  // Build sender string
+  const from = item.from
+    ? `${item.from.displayName} <${item.from.emailAddress}>`
+    : '';
+
+  // Build To/CC strings
+  const toList = (item.to || [])
+    .map(r => r.displayName ? `${r.displayName} <${r.emailAddress}>` : r.emailAddress)
+    .join('; ');
+  const ccList = (item.cc || [])
+    .map(r => r.displayName ? `${r.displayName} <${r.emailAddress}>` : r.emailAddress)
+    .join('; ');
+
+  const subject  = item.subject || '(No Subject)';
+  const sentDate = item.dateTimeCreated ? new Date(item.dateTimeCreated) : null;
+
+  // Show preview
+  document.getElementById('subjectLine').textContent = subject;
+  document.getElementById('fromVal').textContent = from;
+  document.getElementById('toVal').textContent   = toList;
+  if (ccList) {
+    document.getElementById('ccVal').textContent  = ccList;
+    document.getElementById('ccRow').style.display = 'grid';
+  }
+  document.getElementById('dateVal').textContent = sentDate
+    ? sentDate.toLocaleString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })
+    : '';
+
+  document.getElementById('preview').style.display   = 'flex';
+  document.getElementById('convertBtn').style.display = 'block';
+  log('Email loaded. Click "Save as PDF" to convert.', 'in');
+
+  // Get body text (async)
+  item.body.getAsync(Office.CoercionType.Text, (result) => {
+    const body = result.status === Office.AsyncResultStatus.Succeeded
+      ? result.value.trim()
+      : '(Could not read message body)';
+
+    // Attachment names
+    const attachments = (item.attachments || [])
+      .filter(a => !a.isInline)
+      .map(a => a.name);
+
+    emailData = { subject, from, to: toList, cc: ccList, body, sentDate, attachments };
+    log('Body loaded — ready to convert.', 'ok');
+  });
+});
+
+// ── Convert button ─────────────────────────────────────────────────────────────
+document.getElementById('convertBtn').addEventListener('click', () => {
+  if (!emailData) {
+    log('Still loading email body — wait a moment and try again.', 'wn');
+    return;
+  }
+  const btn = document.getElementById('convertBtn');
+  btn.disabled = true;
+  btn.textContent = 'Converting…';
+  log('Building PDF…', 'in');
+
+  try {
+    const pdf  = makePDF(emailData);
+    const name = sanitizeFilename(emailData.subject) + '.pdf';
+    dlBlob(pdf, name);
+    log(`✓ Saved: ${name}`, 'ok');
+  } catch(err) {
+    log(`✗ ${err.message}`, 'er');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬇ Save as PDF';
+  }
+});
+
+function sanitizeFilename(s) {
+  return s.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) || 'email';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PDF BUILDER — pure JS, zero dependencies
+// ═══════════════════════════════════════════════════════════════════════════════
+function makePDF(email) {
+  const PW=612, PH=792, ML=52, MT=52, MB=55, CW=PW-104;
+  const pages=[]; let ops=[];
+  function flush() { pages.push(ops.join('\n')); ops=[]; }
+
+  function pe(s) {
+    let r='';
+    for (let i=0;i<s.length;i++) {
+      const c=s.charCodeAt(i);
+      if (c===40)r+='\\('; else if(c===41)r+='\\)';
+      else if(c===92)r+='\\\\'; else if(c>255)r+='?';
+      else r+=s[i];
+    }
+    return r;
+  }
+  function rgb(r,g,b) { return `${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`; }
+  function fillRect(x,y,w,h,r,g,b) { ops.push(`${rgb(r,g,b)} rg ${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)} re f`); }
+  function drawLine(x1,y1,x2,y2,r,g,b,lw) { ops.push(`${rgb(r,g,b)} RG ${lw} w ${x1.toFixed(1)} ${y1.toFixed(1)} m ${x2.toFixed(1)} ${y2.toFixed(1)} l S`); }
+  function drawText(s,x,y,sz,bold,r,g,b) {
+    if (!s) return;
+    ops.push(`${rgb(r,g,b)} rg BT /${bold?'FB':'FR'} ${sz} Tf ${x.toFixed(1)} ${y.toFixed(1)} Td (${pe(s)}) Tj ET`);
+  }
+  function wrap(str,maxW,sz) {
+    const cw=sz*0.52;
+    if (str.length*cw<=maxW) return [str];
+    const words=str.split(' '); const lines=[]; let cur='';
+    for (const w of words) {
+      const test=cur?cur+' '+w:w;
+      if (test.length*cw>maxW&&cur){ lines.push(cur); cur=w; } else cur=test;
+    }
+    if (cur) lines.push(cur);
+    return lines.length?lines:[''];
+  }
+
+  let y=PH-MT;
+  fillRect(ML,y-52,CW,52,17,34,64);
+  const subj=email.subject.length>78?email.subject.slice(0,77)+'…':email.subject;
+  drawText(subj,ML+14,y-34,14,true,255,255,255);
+  y-=68;
+
+  const meta=[
+    email.from     ?['FROM',email.from]  :null,
+    email.to       ?['TO',  email.to]    :null,
+    email.cc       ?['CC',  email.cc]    :null,
+    email.sentDate ?['DATE',email.sentDate.toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})]:null,
+  ].filter(Boolean);
+
+  for (let i=0;i<meta.length;i++) {
+    const [label,value]=meta[i];
+    fillRect(ML,y-22,CW,22,...(i%2===0?[240,245,250]:[232,238,245]));
+    drawText(label,ML+8,y-14,7.5,true,13,124,110);
+    const maxC=Math.floor((CW-52)/(9.5*0.52));
+    drawText(value.length>maxC?value.slice(0,maxC-1)+'…':value,ML+48,y-14,9.5,false,20,30,50);
+    y-=22;
+  }
+  y-=14;
+  drawLine(ML,y,ML+CW,y,13,124,110,1.5);
+  y-=16;
+
+  for (const para of email.body.split('\n')) {
+    const t=para.trim();
+    if (!t){ y-=5; continue; }
+    for (const ln of wrap(t,CW,10)) {
+      if (y-15<MB){ flush(); y=PH-MT; }
+      drawText(ln,ML,y,10,false,30,40,60); y-=15;
+    }
+  }
+
+  if (email.attachments && email.attachments.length) {
+    y-=12;
+    if (y-40<MB){ flush(); y=PH-MT; }
+    drawLine(ML,y,ML+CW,y,180,195,210,0.5); y-=12;
+    drawText(`ATTACHMENTS (${email.attachments.length})`,ML,y,8,true,13,124,110); y-=12;
+    for (const att of email.attachments) {
+      if (y-14<MB){ flush(); y=PH-MT; }
+      drawText(`- ${att}`,ML+6,y,9,false,80,100,120); y-=14;
+    }
+  }
+  flush();
+
+  // Assemble PDF
+  const enc=new TextEncoder(); const parts=[]; let pos=0; const offs={};
+  function emit(s){ const byt=enc.encode(s+'\n'); parts.push(byt); pos+=byt.length; }
+  function emitRaw(byt){ parts.push(byt); pos+=byt.length; }
+  function obj(id){ offs[id]=pos; emit(`${id} 0 obj`); }
+
+  emit('%PDF-1.4');
+  obj(1); emit('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'); emit('endobj');
+  obj(2); emit('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'); emit('endobj');
+  obj(3); emit('<< /Font << /FR 1 0 R /FB 2 0 R >> >>'); emit('endobj');
+
+  const total=pages.length; const dateStr=new Date().toLocaleString();
+  const sIds=[]; let nid=4;
+
+  for (let i=0;i<total;i++) {
+    const ft=`${email.subject}  \xB7  ${dateStr}  \xB7  Page ${i+1} of ${total}`;
+    const fx=((PW/2)-ft.length*1.85).toFixed(1);
+    const footer=`${rgb(160,175,190)} rg BT /FR 7 Tf ${fx} 25.0 Td (${pe(ft)}) Tj ET`;
+    const content=enc.encode(pages[i]+'\n'+footer);
+    obj(nid); sIds.push(nid);
+    emit(`<< /Length ${content.length} >>`); emit('stream');
+    emitRaw(content); emit('\nendstream'); emit('endobj'); nid++;
+  }
+
+  const pagesId=nid+total; const pIds=[];
+  for (let i=0;i<total;i++) {
+    obj(nid); pIds.push(nid);
+    emit(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 612 792] /Resources 3 0 R /Contents ${sIds[i]} 0 R >>`);
+    emit('endobj'); nid++;
+  }
+  obj(pagesId);
+  emit(`<< /Type /Pages /Kids [${pIds.map(id=>`${id} 0 R`).join(' ')}] /Count ${total} >>`);
+  emit('endobj');
+
+  const catId=pagesId+1; obj(catId);
+  emit(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`); emit('endobj');
+
+  const xrefPos=pos; const objCount=catId+1;
+  emit('xref'); emit(`0 ${objCount}`); emit('0000000000 65535 f ');
+  for (let i=1;i<objCount;i++) emit(String(offs[i]||0).padStart(10,'0')+' 00000 n ');
+  emit('trailer'); emit(`<< /Size ${objCount} /Root ${catId} 0 R >>`);
+  emit('startxref'); emit(String(xrefPos)); emit('%%EOF');
+
+  const totalLen=parts.reduce((a,p)=>a+p.length,0);
+  const out=new Uint8Array(totalLen); let off=0;
+  for (const p of parts){ out.set(p,off); off+=p.length; }
+  return out.buffer;
+}
+
+// ── Download ──────────────────────────────────────────────────────────────────
+function dlBlob(buf, name) {
+  const blob=new Blob([buf],{type:'application/pdf'});
+  const url=URL.createObjectURL(blob);
+  const a=Object.assign(document.createElement('a'),{href:url,download:name});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+</script>
+</body>
+</html>
