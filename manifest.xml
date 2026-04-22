@@ -12,9 +12,9 @@
   <DisplayName DefaultValue="Save as PDF"/>
   <Description DefaultValue="Convert this email to a PDF and save to your Downloads folder."/>
 
-  <IconUrl DefaultValue="https://rtangswork.github.io/msg-to-pdf/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://rtangswork.github.io/msg-to-pdf/icon-80.png"/>
-  <SupportUrl DefaultValue="https://rtangswork.github.io/msg-to-pdf"/>
+  <IconUrl DefaultValue="https://rtangswork.github.io/MSG-to-PDF/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://rtangswork.github.io/MSG-to-PDF/icon-80.png"/>
+  <SupportUrl DefaultValue="https://rtangswork.github.io/MSG-to-PDF"/>
 
   <AppDomains>
     <AppDomain>https://rtangswork.github.io</AppDomain>
@@ -33,7 +33,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://rtangswork.github.io/msg-to-pdf/taskpane.html"/>
+        <SourceLocation DefaultValue="https://rtangswork.github.io/MSG-to-PDF/taskpane.html"/>
         <RequestedHeight>450</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -88,8 +88,8 @@
 
     <Resources xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0">
       <bt:Urls>
-        <bt:Url id="Urls.TaskPane"     DefaultValue="https://rtangswork.github.io/msg-to-pdf/taskpane.html"/>
-        <bt:Url id="Urls.FunctionFile" DefaultValue="https://rtangswork.github.io/msg-to-pdf/function-file.html"/>
+        <bt:Url id="Urls.TaskPane"     DefaultValue="https://rtangswork.github.io/MSG-to-PDF/taskpane.html"/>
+        <bt:Url id="Urls.FunctionFile" DefaultValue="https://rtangswork.github.io/MSG-to-PDF/function-file.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel"  DefaultValue="Email Tools"/>
@@ -99,9 +99,9 @@
         <bt:String id="ButtonDesc" DefaultValue="Convert this email to a PDF and save to your Downloads folder."/>
       </bt:LongStrings>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://rtangswork.github.io/msg-to-pdf/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://rtangswork.github.io/msg-to-pdf/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://rtangswork.github.io/msg-to-pdf/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://rtangswork.github.io/MSG-to-PDF/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://rtangswork.github.io/MSG-to-PDF/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://rtangswork.github.io/MSG-to-PDF/icon-80.png"/>
       </bt:Images>
     </Resources>
 
