@@ -2,6 +2,8 @@
 <OfficeApp
   xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
   xsi:type="MailApp">
 
   <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
@@ -48,7 +50,7 @@
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides" xsi:type="VersionOverridesV1_0">
 
     <Requirements>
-      <bt:Sets xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0">
+      <bt:Sets>
         <bt:Set Name="Mailbox" MinVersion="1.3"/>
       </bt:Sets>
     </Requirements>
@@ -70,9 +72,9 @@
                     <Description resid="ButtonDesc"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="Icon.16x16" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"/>
-                    <bt:Image size="32" resid="Icon.32x32" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"/>
-                    <bt:Image size="80" resid="Icon.80x80" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"/>
+                    <bt:Image size="16" resid="Icon.16x16"/>
+                    <bt:Image size="32" resid="Icon.32x32"/>
+                    <bt:Image size="80" resid="Icon.80x80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
                     <SourceLocation resid="Urls.TaskPane"/>
@@ -86,10 +88,10 @@
       </Host>
     </Hosts>
 
-    <Resources xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0">
+    <Resources>
       <bt:Urls>
-        <bt:Url id="Urls.TaskPane"     DefaultValue="https://rtangswork.github.io/MSG-to-PDF/taskpane.html"/>
-        <bt:Url id="Urls.FunctionFile" DefaultValue="https://rtangswork.github.io/MSG-to-PDF/function-file.html"/>
+        <bt:Url id="Urls.TaskPane"      DefaultValue="https://rtangswork.github.io/MSG-to-PDF/taskpane.html"/>
+        <bt:Url id="Urls.FunctionFile"  DefaultValue="https://rtangswork.github.io/MSG-to-PDF/function-file.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel"  DefaultValue="Email Tools"/>
