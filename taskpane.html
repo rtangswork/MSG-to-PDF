@@ -158,6 +158,21 @@ header { text-align: center; padding-bottom: 12px; border-bottom: 1px solid var(
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+#retryBtn {
+  background: transparent;
+  color: var(--teal);
+  border: 1px solid var(--teal2);
+  border-radius: 8px;
+  padding: 9px;
+  font-family: var(--mono);
+  font-size: .78rem;
+  cursor: pointer;
+  width: 100%;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+#retryBtn:hover { background: rgba(0,212,180,0.08); }
+
 footer {
   text-align: center;
   font-family: var(--mono);
@@ -176,20 +191,12 @@ footer {
 
   <div id="loading">
     <div class="spinner"></div>
-    <span>Loading email…</span>
+    <span id="loadingMsg">Reading email…</span>
   </div>
-
-  <div id="preview">
-    <div id="subjectLine"></div>
-    <div class="field"><span class="field-label">From</span><span class="field-value" id="fromVal"></span></div>
-    <div class="field"><span class="field-label">To</span><span class="field-value" id="toVal"></span></div>
-    <div class="field" id="ccRow" style="display:none"><span class="field-label">CC</span><span class="field-value" id="ccVal"></span></div>
-    <div class="field"><span class="field-label">Date</span><span class="field-value" id="dateVal"></span></div>
-  </div>
-
-  <button id="convertBtn">⬇ Save as PDF</button>
 
   <div id="log"></div>
+
+  <button id="retryBtn" style="display:none">↺ Convert Again</button>
 </div>
 
 <footer>Nothing is uploaded · Runs entirely in Outlook</footer>
@@ -209,87 +216,56 @@ function log(msg, type) {
 let emailData = null;
 
 Office.onReady((info) => {
-  document.getElementById('loading').style.display = 'none';
-
   if (info.host !== Office.HostType.Outlook) {
-    log('Open this add-in from Outlook to convert emails.', 'wn');
+    document.getElementById('loading').style.display = 'none';
+    log('Open this add-in from Outlook.', 'wn');
     return;
   }
+  autoConvert();
+});
+
+function autoConvert() {
+  const loadingMsg = document.getElementById('loadingMsg');
+  const loading    = document.getElementById('loading');
+  const retryBtn   = document.getElementById('retryBtn');
+  retryBtn.style.display = 'none';
 
   const item = Office.context.mailbox.item;
-
-  // Build sender string
-  const from = item.from
-    ? `${item.from.displayName} <${item.from.emailAddress}>`
-    : '';
-
-  // Build To/CC strings
-  const toList = (item.to || [])
-    .map(r => r.displayName ? `${r.displayName} <${r.emailAddress}>` : r.emailAddress)
-    .join('; ');
-  const ccList = (item.cc || [])
-    .map(r => r.displayName ? `${r.displayName} <${r.emailAddress}>` : r.emailAddress)
-    .join('; ');
-
+  const from = item.from ? `${item.from.displayName} <${item.from.emailAddress}>` : '';
+  const toList = (item.to || []).map(r => r.displayName ? `${r.displayName} <${r.emailAddress}>` : r.emailAddress).join('; ');
+  const ccList = (item.cc || []).map(r => r.displayName ? `${r.displayName} <${r.emailAddress}>` : r.emailAddress).join('; ');
   const subject  = item.subject || '(No Subject)';
   const sentDate = item.dateTimeCreated ? new Date(item.dateTimeCreated) : null;
+  const attachments = (item.attachments || []).filter(a => !a.isInline).map(a => a.name);
 
-  // Show preview
-  document.getElementById('subjectLine').textContent = subject;
-  document.getElementById('fromVal').textContent = from;
-  document.getElementById('toVal').textContent   = toList;
-  if (ccList) {
-    document.getElementById('ccVal').textContent  = ccList;
-    document.getElementById('ccRow').style.display = 'grid';
-  }
-  document.getElementById('dateVal').textContent = sentDate
-    ? sentDate.toLocaleString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })
-    : '';
+  loadingMsg.textContent = 'Reading email body…';
+  loading.style.display = 'flex';
 
-  document.getElementById('preview').style.display   = 'flex';
-  document.getElementById('convertBtn').style.display = 'block';
-  log('Email loaded. Click "Save as PDF" to convert.', 'in');
-
-  // Get body text (async)
   item.body.getAsync(Office.CoercionType.Text, (result) => {
     const body = result.status === Office.AsyncResultStatus.Succeeded
       ? result.value.trim()
       : '(Could not read message body)';
 
-    // Attachment names
-    const attachments = (item.attachments || [])
-      .filter(a => !a.isInline)
-      .map(a => a.name);
+    loading.style.display = 'none';
 
-    emailData = { subject, from, to: toList, cc: ccList, body, sentDate, attachments };
-    log('Body loaded — ready to convert.', 'ok');
+    try {
+      log(`Converting: "${subject}"`, 'in');
+      const email = { subject, from, to: toList, cc: ccList, body, sentDate, attachments };
+      const pdf   = makePDF(email);
+      const name  = sanitizeFilename(subject) + '.pdf';
+      dlBlob(pdf, name);
+      log(`✓ Saved: ${name}`, 'ok');
+      log('You can close this panel now.', 'in');
+    } catch(err) {
+      log(`✗ ${err.message}`, 'er');
+      console.error(err);
+    }
+
+    retryBtn.style.display = 'block';
   });
-});
+}
 
-// ── Convert button ─────────────────────────────────────────────────────────────
-document.getElementById('convertBtn').addEventListener('click', () => {
-  if (!emailData) {
-    log('Still loading email body — wait a moment and try again.', 'wn');
-    return;
-  }
-  const btn = document.getElementById('convertBtn');
-  btn.disabled = true;
-  btn.textContent = 'Converting…';
-  log('Building PDF…', 'in');
-
-  try {
-    const pdf  = makePDF(emailData);
-    const name = sanitizeFilename(emailData.subject) + '.pdf';
-    dlBlob(pdf, name);
-    log(`✓ Saved: ${name}`, 'ok');
-  } catch(err) {
-    log(`✗ ${err.message}`, 'er');
-    console.error(err);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '⬇ Save as PDF';
-  }
-});
+document.getElementById('retryBtn').addEventListener('click', autoConvert);
 
 function sanitizeFilename(s) {
   return s.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) || 'email';
